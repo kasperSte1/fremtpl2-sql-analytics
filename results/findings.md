@@ -87,6 +87,10 @@ drives an old car is not separable here.
 fewer claims: 0.1482 against 0.1270, a gap of 7.9 standard errors. Among cars aged 3-11 it
 means more claims: 0.0946 against 0.0999, a gap of 3.5. The second effect is much weaker
 than the first, but both are too large for chance, and they point opposite ways.
+Standard errors on the difference are computed in absolute units: SE(f) = f/√C for each cell,
+combined as √(SE₁² + SE₂²). Both comparisons were chosen after inspecting the grid rather than specified
+in advance, so the significance levels are optimistic. The stronger effect survives any correction for
+multiple comparisons, the weaker one is closer to the line.
 
 ## Claim severity (`q06_severity.sql`)
 

@@ -248,6 +248,54 @@ estimated cost of 12,694.
 
 ---
 
+## Power BI model
+
+An interactive report over the same `core` schema: `powerbi/fremtpl2.pbix`.
+The model imports `core.policy` and `core.claim` through the PostgreSQL
+connector, related one-to-many on `id_pol`. Driver age, vehicle age and engine
+power are banded in Power Query using the same cut points as
+`sql/analysis/q04_frequency_by_age.sql` and `q05_risk_grid.sql`.
+Those steps fold into `CASE WHEN` and run in the database, not locally.
+The data is imported rather than queried live, so the file opens and
+works without a running database; refreshing it needs one.
+
+![Portfolio view](powerbi/portfolio_view.png)
+
+### Two baselines, on purpose
+
+The report shows relativity twice. Against the portfolio it answers "how does
+this segment compare to the whole book"; against the current selection it
+answers "what stands out inside what I am looking at". Selecting a region
+moves one and not the other, and the frequency each one divides by is printed
+underneath it, so the reader can see which denominator produced which bar.
+
+### The precision threshold is a control, not a constant
+
+`q03_frequency_by_region.sql` drops regions whose relative standard error
+exceeds 5%, and `results/findings.md` records that this cutoff is a choice
+rather than a measurement. In the report it is a slider. Moving it adds and
+removes regions from the ranking and changes when the precision warning
+fires, so the cost of that choice is visible instead of described.
+
+The warning itself reacts to the intersection of all four slicers, which no
+per-visual filter can anticipate: region, age band, fuel and area are each
+reasonable alone and can still leave a handful of claims together.
+
+![Precision warning](powerbi/precision_warning.png)
+
+Region R54 with the threshold at 2.5%: 968 claims, a relative standard error
+of 3.21%, the warning lit, and the regional ranking cut to those still clearing
+the threshold.
+
+### Reconciliation
+
+Every figure in the report was checked against the SQL output: the portfolio
+totals, the six age-band frequencies, the region ranking, and all sixteen
+cells and margins of the vehicle age x engine power grid. The model and the
+queries agree to four decimal places.
+
+---
+
 ## Findings
 
 Portfolio-wide claim frequency: **0.1007** claims per policy-year across 358,499
@@ -310,26 +358,30 @@ reliable, one just below is discarded entirely.
 ## Repository layout
 
 ```
-docker-compose.yml      PostgreSQL 16 service, pinned version, named volume
-.env.example            connection settings template
+docker-compose.yml        PostgreSQL 16 service, pinned version, named volume
+.env.example              connection settings template
 sql/
-  01_schema_raw.sql     landing layer, deliberately unconstrained
-  02_schema_core.sql    validated layer: keys, types, CHECK constraints, quarantine
-  03_audit.sql          consistency checks, each with its measured result
-  04_promote.sql        raw -> core, with quarantine for rejected rows
-  05_indexes.sql        the two indexes and ANALYZE
-  06_benchmark.sql      EXPLAIN ANALYZE for the three benchmark queries
+  01_schema_raw.sql       landing layer, deliberately unconstrained
+  02_schema_core.sql      validated layer: keys, types, CHECK constraints, quarantine
+  03_audit.sql            consistency checks, each with its measured result
+  04_promote.sql          raw -> core, with quarantine for rejected rows
+  05_indexes.sql          the two indexes and ANALYZE
+  06_benchmark.sql        EXPLAIN ANALYZE for the three benchmark queries
   analysis/
-    q02_fanout.sql      the fan-out trap, on real numbers
+    q02_fanout.sql        the fan-out trap, on real numbers
     q03_frequency_by_region.sql
     q04_frequency_by_age.sql
     q05_risk_grid.sql
-    q06_severity.sql    claim severity, overall and by driver age
-    q07_relativity.sql  window functions
+    q06_severity.sql      claim severity, overall and by driver age
+    q07_relativity.sql    window functions
 scripts/
-  download.py           fetches the source data from OpenML into data/raw/
-  db.py                 connection string assembled from .env
-  load.py               CSV -> raw layer via COPY
+  download.py             fetches the source data from OpenML into data/raw/
+  db.py                   connection string assembled from .env
+  load.py                 CSV -> raw layer via COPY
 results/
-  findings.md           full analytical results: tables, standard errors, caveats
+  findings.md             full analytical results: tables, standard errors, caveats
+powerbi/
+  fremtpl2.pbix           report and model; binary, versioned as a whole
+  portfolio_view.png      full page, no filters applied
+  precision_warning.png   R54 at a 2.5% threshold, warning active
 ```
